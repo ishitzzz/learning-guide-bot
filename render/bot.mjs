@@ -96,7 +96,9 @@ async function chat(text) {
   const m = L.load(LEARNER_FILE);
   const s = L.summary(m);
   const mem = (s.cards || s.repeatedMistakes?.length) ? "\nLearner memory: " + JSON.stringify(s).slice(0, 800) : "";
-  return await askModel([{ role: "system", content: GUIDE_PROMPT + mem }, { role: "user", content: text }]);
+  const msgs = [{ role: "system", content: GUIDE_PROMPT + mem }, { role: "user", content: text }];
+  try { return await askModel(msgs); }
+  catch (e) { log("model call failed:", e.message); await sleep(2500); return await askModel(msgs); } // one retry rides out transient 429/503
 }
 async function command(text) {
   const [head, ...rest] = text.trim().split(/\s+/); const arg = rest.join(" "); const m = L.load(LEARNER_FILE);
@@ -116,7 +118,7 @@ async function handle1(u) {
   if (msg.text.startsWith("/")) { let out; try { out = await command(msg.text); } catch (e) { out = "That did not work: " + e.message; } if (out) return void (await tg("sendMessage", { chat_id: msg.chat.id, text: String(out).slice(0, 3900) })); }
   let reply;
   try { reply = (await chat(msg.text)).trim() || "I have nothing useful to say to that yet."; }
-  catch (e) { reply = /budget/.test(e.message) ? "Today's free model budget is used up. It resets at midnight US Pacific time." : "Something failed on my side. Try that again in a minute."; }
+  catch (e) { log("chat failed after retry:", e.message); reply = /budget/.test(e.message) ? "Today's free model budget is used up. It resets at midnight US Pacific time." : "Something failed on my side. Try that again in a minute."; }
   const sent = await tg("sendMessage", { chat_id: msg.chat.id, text: String(reply).slice(0, 3900) });
   log("reply", sent.ok ? "sent" : "FAILED " + sent.description);
 }
