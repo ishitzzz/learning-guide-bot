@@ -1,0 +1,7 @@
+{
+  "name": "learning-guide-render-bot",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node render/bot.mjs" }
+}
